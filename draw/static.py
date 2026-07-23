@@ -23,9 +23,25 @@ Torus_SemiBold_30 = ImageFont.truetype(str(osufile / "fonts" / "Torus SemiBold.o
 Torus_SemiBold_40 = ImageFont.truetype(str(osufile / "fonts" / "Torus SemiBold.otf"), 40)
 Torus_SemiBold_45 = ImageFont.truetype(str(osufile / "fonts" / "Torus SemiBold.otf"), 45)
 Torus_SemiBold_50 = ImageFont.truetype(str(osufile / "fonts" / "Torus SemiBold.otf"), 50)
+Venera_60 = ImageFont.truetype(str(osufile / "fonts" / "Venera.otf"), 60)
+extra_30 = ImageFont.truetype(str(osufile / "fonts" / "Extra.otf"), 30)
+
+InfoImg = Image.open(osufile / "info.png").convert("RGBA")
+SupporterBg = Image.open(osufile / "work" / "suppoter.png").convert("RGBA")
+ExpLeftBg = Image.open(osufile / "work" / "left.png").convert("RGBA")
+ExpCenterBg = Image.open(osufile / "work" / "center.png").convert("RGBA")
+ExpRightBg = Image.open(osufile / "work" / "right.png").convert("RGBA")
+BgImg = Image.open(osufile / "Best Performance.png").convert("RGBA")
+BgImg1 = Image.open(osufile / "History Score.jpg").convert("RGBA")
+MapBg = Image.open(osufile / "beatmapinfo.png").convert("RGBA")
+MapBg1 = Image.open(osufile / "maniabeatmapinfo.png").convert("RGBA")
+BarImg = Image.open(osufile / "work" / "bmap.png").convert("RGBA")
+Stars = Image.open(osufile / "work" / "stars.png").convert("RGBA")
+Stardiff = Image.open(osufile / "work" / "stardiff.png").convert("RGBA")
 TeamBlue = Image.open(osufile / "match" / "team_blue.png").convert("RGBA")
 TeamRed = Image.open(osufile / "match" / "team_red.png").convert("RGBA")
 MpLink = Image.open(osufile / "match" / "mplink.png").convert("RGBA")
+MpLinkMap = Image.open(osufile / "match" / "mplink_map.png").convert("RGBA")
 
 
 # 颜色取色参考 https://github.com/ppy/osu-web/blob/97997d9c7b7f9c49f9b3cdd776c71afb9872c34b/resources/js/utils/beatmap-helper.ts#L20
@@ -54,3 +70,18 @@ __cmap = mcolors.LinearSegmentedColormap.from_list(
 )
 __norm = mpl.colors.Normalize(vmin=0, vmax=9)
 ColorArr = mpl.cm.ScalarMappable(norm=__norm, cmap=__cmap).to_rgba(np.linspace(0, 9, 900), bytes=True)
+IconLs = ["\ue800", "\ue803", "\ue801", "\ue802", "\ue800", "\ue803", "\ue801", "\ue802", "\ue800"]
+ModsDict = {file.stem: Image.open(file).convert("RGBA") for file in (osufile / "mods").glob("*.png")}
+RankDict = {file.stem: Image.open(file).convert("RGBA") for file in (osufile / "ranking").glob("*.png")}
+_mode_img_names = {
+    0: "pfm_std.png",
+    1: "pfm_taiko.png",
+    2: "pfm_ctb.png",
+    3: "pfm_mania.png",
+    4: "pfm_std.png",
+    5: "pfm_taiko.png",
+    6: "pfm_ctb.png",
+    7: "pfm_mania.png",
+    8: "pfm_std.png",
+}
+ScoreModeImgs = {mode: Image.open(osufile / name).convert("RGBA") for mode, name in _mode_img_names.items()}

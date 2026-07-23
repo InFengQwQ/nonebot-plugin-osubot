@@ -1,34 +1,56 @@
 import asyncio
-import base64
 from io import BytesIO
-from pathlib import Path
 from typing import Optional
 from datetime import datetime, timedelta
 
-import jinja2
-from osu_tools import OsuCalculator
-from nonebot_plugin_htmlrender import get_new_page
+from PIL import ImageDraw, ImageFilter, ImageEnhance
 
 from ..info import get_bg
-from ..utils import FGM, NGM, normalize_map_mode
 from ..mods import get_mods_list
 from ..exceptions import NetworkError
 from ..schema.user import UnifiedUser
 from ..schema import Beatmap, NewScore
 from ..beatmap_stats_moder import with_mods
-from ..pp import cal_pp, get_if_pp_ss_pp, get_pp_components
+from ..pp import cal_pp, get_ss_pp, get_if_pp_ss_pp
 from ..schema.score import Mod, UnifiedScore, NewStatistics
 from ..api import osu_api, get_user_scores, get_user_info_data, get_ppysb_map_scores
-from ..file import map_path, download_osu, user_cache_path, team_cache_path, get_projectimg
+from ..file import map_path, download_osu, user_cache_path
 from .utils import (
+    crop_bg,
+    draw_acc,
     is_close,
+    stars_diff,
+    update_map,
+    draw_fillet,
+    update_icon,
     calc_songlen,
     open_user_icon,
     filter_scores_with_regex,
+    trim_text_with_ellipsis,
+    draw_text_with_outline,
+    handle_team_image,
+    process_user_avatar_with_gif,
+    get_map_difficulty_arrays,
 )
 from .static import (
     Image,
+    IconLs,
+    ModsDict,
+    Venera_60,
+    Torus_Regular_15,
+    Torus_Regular_20,
+    Torus_Regular_25,
+    Torus_Regular_50,
+    Torus_Regular_60,
+    Torus_SemiBold_15,
+    Torus_SemiBold_20,
+    Torus_SemiBold_25,
+    Torus_SemiBold_30,
     osufile,
+    extra_30,
+    Stardiff,
+    Stars,
+    ScoreModeImgs,
 )
 
 
@@ -41,9 +63,7 @@ async def draw_score(
     search_condition: list,
     source: str = "osu",
     best: int = 1,
-    *,
-    return_context: bool = False,
-) -> BytesIO | tuple[BytesIO, int, int]:
+) -> BytesIO:
     task1 = asyncio.create_task(get_user_info_data(uid, mode, source))
     if project == "bp":
         scores = await get_user_scores(uid, mode, "best", source=source, legacy_only=not is_lazer, limit=best)
@@ -90,10 +110,7 @@ async def draw_score(
     # 判断是否开启lazer模式
     if source == "osu":
         score = cal_score_info(is_lazer, score, source)
-    image = await draw_score_pic(score, info, map_json, "", source)
-    if return_context:
-        return image, score.beatmap.id, score.beatmap.set_id
-    return image
+    return await draw_score_pic(score, info, map_json, "", source)
 
 
 async def get_score_data(
@@ -105,10 +122,8 @@ async def get_score_data(
     source: str = "osu",
 ) -> BytesIO:
     grank = ""
-    map_json = await osu_api("map", map_id=mapid)
-    native_mode = int(map_json["mode_int"])
-    mode = NGM[normalize_map_mode(FGM[mode], native_mode, source)]
     task = asyncio.create_task(get_user_info_data(uid, mode, source))
+    map_json = await osu_api("map", map_id=mapid)
     if source == "osu":
         if mods:
             score_json = await osu_api("score", uid, mode, mapid, legacy_only=int(not is_lazer))
@@ -175,13 +190,111 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
         if has_nc:
             score_info.mods = [m for m in score_info.mods if m.acronym != "DT"]
     mapinfo = Beatmap(**map_json)
-    original_mapinfo = mapinfo.model_copy(deep=True)
+    original_mapinfo = mapinfo.copy()
     mapinfo = with_mods(mapinfo, score_info, score_info.mods)
-    # mania 转谱的键位数沿用原绘图逻辑计算。
-    if score_info.ruleset_id == 3 and mapinfo.mode == "osu":
+    path = map_path / str(mapinfo.beatmapset_id)
+    path.mkdir(parents=True, exist_ok=True)
+    # pp
+    osu = path / f"{mapinfo.id}.osu"
+    pp_info = cal_pp(score_info, str(osu.absolute()), source)
+    original_ss_pp_info = get_ss_pp(str(osu.absolute()), score_info.ruleset_id, [], source)
+    if_pp, ss_pp = get_if_pp_ss_pp(score_info, str(osu.absolute()), source)
+    display_stars = pp_info.stars
+    display_pp = score_info.pp if source == "ppysb" and score_info.pp is not None else pp_info.pp
+    # 新建图片
+    im = Image.new("RGBA", (1280, 720))
+    draw = ImageDraw.Draw(im)
+    # 获取cover并裁剪，高斯，降低亮度
+    try:
+        bg = await get_bg(mapinfo.id, mapinfo.beatmapset_id)
+        cover_crop_left = await crop_bg((1280, 720), bg)
+        cover_gb_left = cover_crop_left.filter(ImageFilter.GaussianBlur(10))
+        cover_gb_left = ImageEnhance.Brightness(cover_gb_left).enhance(1)
+        cover_img_left = ImageEnhance.Brightness(cover_gb_left).enhance(2 / 4.0)
+        im.alpha_composite(cover_img_left, (0, 0))
+        # 新小图 BG
+        cover_crop_right = await crop_bg((650, 270), bg)
+        cover_gb_right = cover_crop_right.filter(ImageFilter.GaussianBlur(1))
+        cover_gb_right = ImageEnhance.Brightness(cover_gb_right).enhance(0.9)
+        cover_img_right = ImageEnhance.Brightness(cover_gb_right).enhance(1)
+        cover_img_right = draw_fillet(cover_img_right, 15)
+        im.alpha_composite(cover_img_right, (0, 50))
+    except NetworkError:
+        ...
+    # 获取成绩背景做底图
+    im.alpha_composite(ScoreModeImgs[score_info.ruleset_id])
+    # 模式
+    draw_text_with_outline(
+        draw,
+        (30, 80),
+        IconLs[score_info.ruleset_id],
+        extra_30,
+        anchor="lm",
+        fill=(255, 255, 255, 255),
+    )
+    # 难度星星
+    stars_bg = stars_diff(display_stars, Stars)
+    stars_img = stars_bg.resize((85, 37))
+    im.alpha_composite(stars_img, (552, 67))
+    # 难度竖条
+    star_bg = stars_diff(display_stars, Stardiff)
+    star_img = star_bg.resize((20, 271))
+    im.alpha_composite(star_img, (0, 50))
+    # 星级
+    if display_stars < 6.5:
+        color = (0, 0, 0, 255)
+    else:
+        color = (255, 217, 102, 255)
+
+    draw.text(
+        (556, 85),
+        f"★{display_stars:.2f}",
+        font=Torus_SemiBold_20,
+        anchor="lm",
+        fill=color,
+    )
+    # mods
+    # if any(i in score_info.mods for i in (Mod(acronym="HD"), Mod(acronym="FL"), Mod(acronym="FI"))):
+    # ranking = ["XH", "SH", "A", "B", "C", "D", "F"]
+    # else:
+    # ranking = ["X", "S", "A", "B", "C", "D", "F"]
+    if score_info.mods:
+        for mods_num, s_mods in enumerate(score_info.mods):
+            if s_mods.acronym in ModsDict:
+                im.alpha_composite(ModsDict[s_mods.acronym], (880 + 50 * mods_num, 100))
+    # 成绩S-F
+    # rank_ok = False
+    # for rank_num, i in enumerate(ranking):
+    # rank_img = osufile / "ranking" / f"ranking-{i}.png"
+    # if rank_ok:
+    # rank_b = Image.open(rank_img).convert("RGBA").resize((48, 24))
+    # rank_new = Image.new("RGBA", rank_b.size, (0, 0, 0, 0))
+    # rank_bg = Image.blend(rank_new, rank_b, 0.5)
+    # elif i != score_info.rank:
+    # rank_b = Image.open(rank_img).convert("RGBA").resize((48, 24))
+    # rank_new = Image.new("RGBA", rank_b.size, (0, 0, 0, 0))
+    # rank_bg = Image.blend(rank_new, rank_b, 0.2)
+    # else:
+    # rank_bg = Image.open(rank_img).convert("RGBA").resize((48, 24))
+    # rank_ok = True
+    # im.alpha_composite(rank_bg, (75, 163 + 39 * rank_num))
+    # 成绩+acc
+    im = draw_acc(im, score_info.accuracy, score_info.ruleset_id)
+    # 地区
+    country = osufile / "flags" / f"{info.country_code}.png"
+    with Image.open(country) as country_img:
+        country_bg = country_img.convert("RGBA").resize((66, 45))
+        im.alpha_composite(country_bg, (208, 597))
+    await handle_team_image(im, draw, info, (208, 660), (80, 40), (297, 675), Torus_Regular_20)
+    # supporter
+    # if info.is_supporter:
+    #     im.alpha_composite(SupporterBg.resize((40, 40)), (250, 640))
+    # 处理mania转谱cs
+    if score_info.ruleset_id == 3 and mapinfo.mode == 0:
         temp_accuracy = mapinfo.accuracy
-        total_objects = mapinfo.count_circles + mapinfo.count_sliders + mapinfo.count_spinners
-        convert = (mapinfo.count_sliders + mapinfo.count_spinners) / total_objects if total_objects else 0
+        convert = (mapinfo.count_sliders + mapinfo.count_spinners) / (
+            mapinfo.count_circles + mapinfo.count_sliders + mapinfo.count_spinners
+        )
         convert_od = round(temp_accuracy)
         if convert < 0.20 or (convert < 0.30 or round(mapinfo.cs) >= 5) and convert_od > 5:
             mapinfo.cs = 7.0
@@ -194,359 +307,343 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
         else:
             temp_accuracy += 1
             mapinfo.cs = max(4.0, min(temp_accuracy, 7.0))
-        original_mapinfo.cs = mapinfo.cs
-    path = map_path / str(mapinfo.beatmapset_id)
-    path.mkdir(parents=True, exist_ok=True)
-    # pp
-    osu = path / f"{mapinfo.id}.osu"
-    pp_info = cal_pp(score_info, str(osu.absolute()), source)
-    if_pp, ss_pp = get_if_pp_ss_pp(score_info, str(osu.absolute()), source)
-    display_stars = pp_info.stars
-    display_pp = score_info.pp if source == "ppysb" and score_info.pp is not None else pp_info.pp
-    return await render_score_template(
-        score_info,
-        info,
-        mapinfo,
-        original_mapinfo,
-        pp_info,
-        display_pp,
-        display_stars,
-        if_pp,
-        ss_pp,
-        grank,
-        str(osu.absolute()),
-        source,
-    )
+    # cs, ar, od, hp
+    mapdiff, original_mapdiff = get_map_difficulty_arrays(mapinfo, original_mapinfo)
 
-
-def _format_pp(value) -> str:
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return str(value)
-    if number >= 1000:
-        return f"{number:,.0f}"
-    return f"{number:,.2f}".rstrip("0").rstrip(".")
-
-
-def _format_stat(value) -> str:
-    return f"{int(value or 0):,}"
-
-
-def _image_data_uri(image: Image.Image, image_format: str = "PNG") -> str:
-    output = BytesIO()
-    frame = image.convert("RGBA" if image_format == "PNG" else "RGB")
-    frame.save(output, image_format, optimize=True)
-    return f"data:image/{image_format.lower()};base64,{base64.b64encode(output.getvalue()).decode()}"
-
-
-async def _owner_avatar_data(owner_id: int) -> str:
-    owner_path = user_cache_path / str(owner_id)
-    owner_path.mkdir(parents=True, exist_ok=True)
-    avatar_path = owner_path / "mapper_avatar.png"
-    try:
-        if not avatar_path.exists():
-            avatar_bytes = await get_projectimg(f"https://a.ppy.sh/{owner_id}")
-            with Image.open(avatar_bytes) as avatar:
-                avatar.convert("RGBA").save(avatar_path, "PNG")
-        with Image.open(avatar_path) as avatar:
-            return _image_data_uri(avatar)
-    except Exception:
-        placeholder = Image.new("RGBA", (32, 32), (40, 55, 68, 255))
-        return _image_data_uri(placeholder)
-
-
-async def _team_icon_data(info: UnifiedUser) -> str | None:
-    if not info.team or not info.team.flag_url:
-        return None
-    icon_path = team_cache_path / f"{info.team.id}.png"
-    try:
-        if not icon_path.exists():
-            icon_bytes = await get_projectimg(info.team.flag_url)
-            with Image.open(icon_bytes) as icon:
-                icon.convert("RGBA").save(icon_path, "PNG")
-        with Image.open(icon_path) as icon:
-            return _image_data_uri(icon)
-    except Exception:
-        return None
-
-
-async def render_score_template(
-    score_info: UnifiedScore,
-    info: UnifiedUser,
-    mapinfo: Beatmap,
-    original_mapinfo: Beatmap,
-    pp_info,
-    display_pp: float,
-    display_stars: float,
-    if_pp: str,
-    ss_pp: str,
-    grank,
-    osu_path: str,
-    source: str,
-) -> BytesIO:
-    mode = score_info.ruleset_id % 4
-    mode_names = ["标准模式", "太鼓模式", "接水果模式", "键盘模式"]
-    mode_codes = ["OSU", "TAIKO", "CATCH", "MANIA"]
-    stats = score_info.statistics
-
-    if mode == 0:
-        judgements = [
-            ("GREAT / 300", stats.great),
-            ("OK / 100", stats.ok),
-            ("MEH / 50", stats.meh),
-            ("MISS / 失误", stats.miss),
-        ]
-        judge_cols = 2
-        ratio = None
-    elif mode == 1:
-        judgements = [("GREAT / 良", stats.great), ("OK / 可", stats.ok), ("MISS / 失误", stats.miss)]
-        judge_cols = 3
-        ratio = None
-    elif mode == 2:
-        judgements = [
-            ("FRUIT / 水果", stats.great),
-            ("LARGE DROPLET", stats.large_tick_hit),
-            ("SMALL DROPLET", stats.small_tick_miss),
-            ("MISS / 失误", stats.miss),
-        ]
-        judge_cols = 2
-        ratio = None
+    for num, (orig, new) in enumerate(zip(original_mapdiff, mapdiff)):
+        orig_difflen = int(400 * max(0, orig) / 10) if orig <= 10 else 400
+        new_difflen = int(400 * max(0, new) / 10) if new <= 10 else 400
+        if is_close(new, orig):
+            color = (255, 255, 255, 255)
+            diff_len = Image.new("RGBA", (orig_difflen, 8), color)
+            im.alpha_composite(diff_len, (165, 352 + 35 * num))
+        elif new > orig and not (score_info.ruleset_id == 3 and mapinfo.mode == "osu"):
+            color = (198, 92, 102, 255)
+            orig_color = (246, 136, 144, 255)
+            new_diff_len = Image.new("RGBA", (new_difflen, 8), color)
+            im.alpha_composite(new_diff_len, (165, 352 + 35 * num))
+            orig_diff_len = Image.new("RGBA", (orig_difflen, 8), orig_color)
+            im.alpha_composite(orig_diff_len, (165, 352 + 35 * num))
+        elif new < orig and not (score_info.ruleset_id == 3 and mapinfo.mode == "osu"):
+            color = (161, 212, 238, 255)
+            orig_color = (255, 255, 255, 255)
+            orig_diff_len = Image.new("RGBA", (orig_difflen, 8), orig_color)
+            im.alpha_composite(orig_diff_len, (165, 352 + 35 * num))
+            new_diff_len = Image.new("RGBA", (new_difflen, 8), color)
+            im.alpha_composite(new_diff_len, (165, 352 + 35 * num))
+        else:
+            raise Exception("没有这种情况")
+        if new == round(new):
+            draw.text(
+                (610, 355 + 35 * num),
+                f"{new:.0f}",
+                font=Torus_SemiBold_20,
+                anchor="mm",
+            )
+        else:
+            draw.text(
+                (610, 355 + 35 * num),
+                f"{new:.2f}" if new != round(new, 1) else f"{new:.1f}",
+                font=Torus_SemiBold_20,
+                anchor="mm",
+            )
+    # stardiff
+    stars = display_stars
+    original_stars = original_ss_pp_info.stars
+    if stars > original_stars:
+        color = (198, 92, 102, 255)
+        orig_color = (246, 111, 34, 255)
+        new_difflen = int(400 * max(0.0, stars) / 10) if stars <= 10 else 400
+        new_diff_len = Image.new("RGBA", (new_difflen, 8), color)
+        im.alpha_composite(new_diff_len, (165, 490))
+        orig_difflen = int(400 * max(0.0, original_stars) / 10) if original_stars <= 10 else 400
+        orig_diff_len = Image.new("RGBA", (orig_difflen, 8), orig_color)
+        im.alpha_composite(orig_diff_len, (165, 490))
+    elif stars < original_stars:
+        color = (161, 187, 127, 255)
+        orig_color = (255, 204, 34, 255)
+        orig_difflen = int(400 * max(0.0, original_stars) / 10) if original_stars <= 10 else 400
+        orig_diff_len = Image.new("RGBA", (orig_difflen, 8), orig_color)
+        im.alpha_composite(orig_diff_len, (165, 490))
+        new_difflen = int(400 * max(0.0, stars) / 10) if stars <= 10 else 400
+        new_diff_len = Image.new("RGBA", (new_difflen, 8), color)
+        im.alpha_composite(new_diff_len, (165, 490))
     else:
-        judgements = [
-            ("MAX / 彩 300", stats.perfect),
-            ("300", stats.great),
-            ("200", stats.good),
-            ("100", stats.ok),
-            ("50", stats.meh),
-            ("MISS", stats.miss),
-        ]
-        judge_cols = 3
-        ratio = f"{stats.perfect / stats.great:.1f} : 1" if stats.great else "∞ : 1"
+        color = (255, 204, 34, 255)
+        difflen = int(400 * stars / 10) if stars <= 10 else 400
+        diff_len = Image.new("RGBA", (difflen, 8), color)
+        im.alpha_composite(diff_len, (165, 490))
+    draw.text((610, 493), f"{stars:.2f}", font=Torus_SemiBold_20, anchor="mm")
+    # 时长 - 滑条
+    diff_info = [
+        calc_songlen(mapinfo.total_length),
+        f"{mapinfo.bpm:.1f}",
+        mapinfo.count_circles,
+        mapinfo.count_sliders,
+    ] + ([mapinfo.count_spinners] if score_info.ruleset_id != 3 else [])
+    for num, i in enumerate(diff_info):
+        draw_text_with_outline(
+            draw,
+            (70 + 120 * num, 300),
+            f"{i}",
+            font=Torus_Regular_20,
+            anchor="lm",
+            fill=(255, 204, 34, 255),
+        )
+    # 状态
+    draw_text_with_outline(
+        draw,
+        (595, 115),
+        mapinfo.status.capitalize(),
+        Torus_SemiBold_15,
+        anchor="mm",
+        fill=(255, 255, 255, 255),
+    )
+    # setid
+    draw.text((32, 25), f"Setid：{mapinfo.beatmapset_id}", font=Torus_SemiBold_20, anchor="lm")
+    # mapid
+    draw.text((650, 25), f"Mapid: {mapinfo.id}", font=Torus_SemiBold_20, anchor="rm")
+    # 曲名
+    title = trim_text_with_ellipsis(mapinfo.beatmapset.title, 600, Torus_SemiBold_30)
+    draw_text_with_outline(
+        draw,
+        (30, 200),
+        title,
+        Torus_SemiBold_30,
+        anchor="lm",
+        fill=(255, 255, 255, 255),
+    )
+    # 艺术家
+    artist = trim_text_with_ellipsis(mapinfo.beatmapset.artist, 600, Torus_SemiBold_20)
+    draw_text_with_outline(
+        draw,
+        (30, 230),
+        artist,
+        Torus_SemiBold_20,
+        anchor="lm",
+        fill=(255, 255, 255, 255),
+    )
+    # mapper
+    if mapinfo.owners:
+        owner_names = [owner.username for owner in mapinfo.owners]
+        owners_str = ", ".join(owner_names)
+        mapper = f"谱师: {owners_str}"
 
-    od = ("OD", original_mapinfo.accuracy, mapinfo.accuracy)
-    hp = ("HP", original_mapinfo.drain, mapinfo.drain)
-    if mode == 1:
-        dimension_values = [od, hp]
-    elif mode == 3:
-        dimension_values = [("KEYS", original_mapinfo.cs, mapinfo.cs), od, hp]
     else:
-        dimension_values = [
-            ("CS", original_mapinfo.cs, mapinfo.cs),
-            ("AR", original_mapinfo.ar, mapinfo.ar),
-            od,
-            hp,
-        ]
-    dimension_max = 11 if any(current > 10 for _, _, current in dimension_values) else 10
-    dimensions = []
-    for name, original, current in dimension_values:
-        changed = not is_close(original, current)
-        dimensions.append(
-            {
-                "name": name,
-                "original": f"{original:.0f}" if name == "KEYS" else f"{original:.1f}",
-                "current": f"{current:.0f}" if name == "KEYS" else f"{current:.1f}",
-                "changed": changed,
-                "original_pos": min(100, max(0, original / dimension_max * 100)),
-                "current_pos": min(100, max(0, current / dimension_max * 100)),
-            }
-        )
-
-    accuracy_pp = {}
-    target_accuracies = (96, 98) if mode in {0, 1, 3} else ()
-    try:
-        calculator = OsuCalculator()
-        for target_accuracy in target_accuracies:
-            accuracy_pp[target_accuracy] = calculator.calculate(
-                osu_path,
-                mode,
-                score_info.mods,
-                target_accuracy,
-            ).pp
-    except Exception:
-        accuracy_pp = dict.fromkeys(target_accuracies, "nan")
-    try:
-        mode_pp = get_pp_components(score_info, osu_path, source)
-    except Exception:
-        mode_pp = {}
-
-    if mode == 0:
-        pp_components = [
-            ("AIM", pp_info.pp_aim),
-            ("SPEED", pp_info.pp_speed),
-            ("ACC", pp_info.pp_acc),
-        ]
-        pp_targets = [
-            ("96% ACC", accuracy_pp[96]),
-            ("98% ACC", accuracy_pp[98]),
-            ("IF FC", if_pp),
-            ("SS PP", ss_pp),
-        ]
-        pp_items = []
-    elif mode == 1:
-        pp_components = [
-            ("难度", mode_pp.get("difficulty", 0)),
-            ("准确", mode_pp.get("accuracy", 0)),
-        ]
-        pp_targets = [
-            ("96% ACC", accuracy_pp[96]),
-            ("98% ACC", accuracy_pp[98]),
-            ("SS PP", ss_pp),
-        ]
-        pp_items = []
-    elif mode == 2:
-        pp_components = [("PP 值", display_pp)]
-        pp_targets = [("IF FC", if_pp), ("SS PP", ss_pp)]
-        pp_items = []
-    elif mode == 3:
-        pp_components = [("PP 值", display_pp)]
-        pp_targets = [
-            ("96% ACC", accuracy_pp[96]),
-            ("98% ACC", accuracy_pp[98]),
-            ("SS PP", ss_pp),
-        ]
-        pp_items = []
-
-    owners = list(mapinfo.owners or [])
-    if not owners:
-        owners = [
-            {
-                "id": mapinfo.beatmapset.user_id,
-                "username": mapinfo.beatmapset.creator,
-            }
-        ]
-    owner_pairs = []
-    for owner in owners[:20]:
-        owner_id = owner.id if hasattr(owner, "id") else owner["id"]
-        username = owner.username if hasattr(owner, "username") else owner["username"]
-        owner_pairs.append((owner_id, username))
-    owner_avatars = await asyncio.gather(*(_owner_avatar_data(owner_id) for owner_id, _ in owner_pairs))
-    owner_data = [
-        {"id": owner_id, "username": username, "avatar": avatar}
-        for (owner_id, username), avatar in zip(owner_pairs, owner_avatars)
-    ]
-
-    mod_data = []
-    for mod in score_info.mods:
-        icon = osufile / "mods" / f"{mod.acronym}.png"
-        if icon.exists():
-            mod_data.append({"name": mod.acronym, "icon": icon.as_uri()})
-
-    rank_image = osufile / "ranking" / f"legacy-ranking-{score_info.rank}@2x.png"
-    if not rank_image.exists():
-        rank_image = osufile / "ranking" / f"ranking-{score_info.rank}.png"
-
-    try:
-        cover_image = await get_bg(mapinfo.id, mapinfo.beatmapset_id)
-        cover = _image_data_uri(cover_image, "JPEG")
-        cover_image.close()
-    except Exception:
-        cover = _image_data_uri(Image.new("RGB", (640, 360), (9, 18, 29)), "JPEG")
-    try:
-        player_image = await open_user_icon(info, source)
-        player_avatar = _image_data_uri(player_image)
-        player_image.close()
-    except Exception:
-        player_avatar = _image_data_uri(Image.new("RGBA", (128, 128), (30, 45, 58, 255)))
-    total_objects = mapinfo.count_circles + mapinfo.count_sliders + mapinfo.count_spinners
-    combo = (
-        f"{score_info.max_combo:,} / {pp_info.max_combo:,}x"
-        if mode in {0, 1, 2} and pp_info.max_combo
-        else f"{score_info.max_combo:,}x"
+        mapper = f"谱师: {mapinfo.beatmapset.creator}"
+    mapper = trim_text_with_ellipsis(mapper, 600, Torus_SemiBold_15)
+    draw_text_with_outline(
+        draw,
+        (30, 265),
+        mapper,
+        Torus_SemiBold_15,
+        anchor="lm",
+        fill=(255, 255, 255, 255),
     )
-    judgement_total = sum(int(value or 0) for _, value in judgements)
-    miss_count = int(stats.miss or 0)
-    combo_completion = score_info.max_combo / pp_info.max_combo * 100 if pp_info.max_combo else 0
-    combo_is_full = bool(pp_info.max_combo and score_info.max_combo >= pp_info.max_combo)
-    team = info.team.model_dump() if info.team else None
-    if team is not None:
-        team["icon"] = await _team_icon_data(info)
-    profile_third_label = "成绩排名" if grank else "玩家等级"
-    profile_third_value = (
-        f"#{grank}"
-        if grank
-        else f"Lv.{info.statistics.level.current}"
-        if info.statistics and info.statistics.level
-        else "—"
+    # 谱面版本
+    version = trim_text_with_ellipsis(mapinfo.version, 450, Torus_SemiBold_15)
+    draw_text_with_outline(
+        draw,
+        (65, 80),
+        version,
+        Torus_SemiBold_15,
+        anchor="lm",
+        fill=(255, 255, 255, 255),
     )
-    data = {
-        "mode_name": mode_names[mode],
-        "mode_code": mode_codes[mode],
-        "eyebrow": "COLLABORATIVE BEATMAP" if len(owner_data) > 1 else "BEATMAP PERFORMANCE",
-        "ended_at": score_info.ended_at.strftime("%Y.%m.%d %H:%M:%S"),
-        "status": mapinfo.status.upper(),
-        "title": mapinfo.beatmapset.title,
-        "title_class": (
-            "title-short"
-            if len(mapinfo.beatmapset.title) <= 14
-            else "title-medium"
-            if len(mapinfo.beatmapset.title) <= 28
-            else "title-long"
-        ),
-        "artist": mapinfo.beatmapset.artist,
-        "version": mapinfo.version,
-        "cover": cover,
-        "bpm": f"{mapinfo.bpm:g}" if mapinfo.bpm is not None else "--",
-        "length": calc_songlen(mapinfo.total_length),
-        "objects": f"{total_objects:,}",
-        "map_id": mapinfo.id,
-        "set_id": mapinfo.beatmapset_id,
-        "avatar": player_avatar,
-        "username": info.username,
-        "support_level": max(0, min(5, int(info.support_level or 0))),
-        "user_id": info.id,
-        "country": info.country_code,
-        "country_rank": info.statistics.country_rank if info.statistics else None,
-        "global_rank": info.statistics.global_rank if info.statistics else None,
-        "team": team,
-        "owners": owner_data,
-        "mods": mod_data,
-        "score": f"{(score_info.legacy_total_score or score_info.total_score):,}",
-        "pp": _format_pp(display_pp),
-        "accuracy": f"{score_info.accuracy:.4f}" if mode == 3 else f"{score_info.accuracy:.2f}",
-        "combo": combo,
-        "combo_is_full": combo_is_full,
-        "stars": f"{display_stars:.2f}",
-        "rank_image": rank_image.as_uri(),
-        "score_rank": grank,
-        "profile_third_label": profile_third_label,
-        "profile_third_value": profile_third_value,
-        "judgement_total": f"{judgement_total:,}",
-        "miss_rate": f"{miss_count / judgement_total * 100:.2f}%" if judgement_total else "0.00%",
-        "combo_completion": f"{combo_completion:.1f}%",
-        "ratio": ratio,
-        "judge_cols": judge_cols,
-        "judgements": [
-            {"label": label, "value": int(value or 0), "display": _format_stat(value)} for label, value in judgements
-        ],
-        "dimension_max": dimension_max,
-        "dimensions": dimensions,
-        "pp_components": [{"label": label, "value": _format_pp(value)} for label, value in pp_components],
-        "pp_has_breakdown": mode in {0, 1},
-        "total_pp": _format_pp(display_pp),
-        "pp_target_title": "满连推演" if mode == 2 else "准确率推演",
-        "pp_targets": [{"label": label, "value": _format_pp(value)} for label, value in pp_targets],
-        "pp_items": [{"label": label, "value": _format_pp(value)} for label, value in pp_items],
-    }
-
-    template_path = Path(__file__).parent / "score_templates"
-    template_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path), enable_async=True)  # noqa: S701
-    template = template_env.get_template("index.html")
-    async with get_new_page(2) as page:
-        await page.set_viewport_size({"width": 1440, "height": 900})
-        await page.goto((template_path / "index.html").as_uri(), wait_until="load")
-        await page.set_content(await template.render_async(d=data), wait_until="domcontentloaded")
-        await page.evaluate("colourStarBadge()")
-        await page.evaluate(
-            "Promise.race([Promise.all([document.fonts.ready, "
-            "...Array.from(document.images, image => image.decode().catch(() => {}))]), "
-            "new Promise(resolve => setTimeout(resolve, 8000))])"
+    # 评价
+    draw.text((772, 185), score_info.rank, font=Venera_60, anchor="mm")
+    # 分数
+    draw.text(
+        (880, 165),
+        f"{score_info.legacy_total_score or score_info.total_score:,}",
+        font=Torus_Regular_60,
+        anchor="lm",
+    )
+    # 时间
+    draw.text((883, 230), "达成时间：", font=Torus_SemiBold_20, anchor="lm")
+    draw.text((985, 230), score_info.ended_at.strftime("%Y-%m-%d %H:%M:%S"), font=Torus_SemiBold_20, anchor="lm")
+    # 全球排名
+    draw.text((883, 260), "全球排行：" if grank else "", font=Torus_SemiBold_20, anchor="lm")
+    draw.text((985, 260), f"#{grank}" if grank else "", font=Torus_SemiBold_25, anchor="lm")
+    # 左下玩家名
+    draw.text((208, 550), info.username, font=Torus_SemiBold_30, anchor="lm")
+    # 国内排名
+    draw.text(
+        (283, 630),
+        f"#{info.statistics.country_rank}",
+        font=Torus_SemiBold_25,
+        anchor="lm",
+    )
+    if score_info.ruleset_id in {0, 4, 8}:
+        draw.text((1066, 393), ss_pp, font=Torus_Regular_25, anchor="mm")
+        draw.text((933, 393), if_pp, font=Torus_Regular_25, anchor="mm")
+        draw.text((768, 438), f"{display_pp:.0f}", font=Torus_Regular_50, anchor="mm")
+        draw.text((933, 482), f"{pp_info.pp_aim:.0f}", font=Torus_Regular_25, anchor="mm")
+        draw.text((1066, 482), f"{pp_info.pp_speed:.0f}", font=Torus_Regular_25, anchor="mm")
+        draw.text((1200, 482), f"{pp_info.pp_acc:.0f}", font=Torus_Regular_25, anchor="mm")
+        draw.text(
+            (768, 577),
+            f"{score_info.accuracy:.2f}%",
+            font=Torus_Regular_25,
+            anchor="mm",
         )
-        # 字体就绪后再跑一次自适应，确保标题/艺人名按真实字宽收缩
-        await page.evaluate("fitBeatmapTitle();fitArtistName()")
-        elem = await page.query_selector("#score")
-        assert elem
-        return BytesIO(await elem.screenshot(type="jpeg", quality=92))
+        draw.text(
+            (768, 666),
+            f"{score_info.max_combo:,}/{pp_info.max_combo}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (933, 577),
+            f"{score_info.statistics.great or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1066, 577),
+            f"{score_info.statistics.ok or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (933, 666),
+            f"{score_info.statistics.meh or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1066, 666),
+            f"{score_info.statistics.miss or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+    elif score_info.ruleset_id in {1, 5}:
+        draw.text(
+            (768, 577),
+            f"{score_info.accuracy:.2f}%",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text((768, 666), f"{score_info.max_combo:,}", font=Torus_Regular_25, anchor="mm")
+        draw.text((768, 438), f"{display_pp:.0f}", font=Torus_Regular_50, anchor="mm")
+        draw.text((933, 393), f"{ss_pp}", font=Torus_Regular_25, anchor="mm")
+        draw.text(
+            (933, 577),
+            f"{score_info.statistics.great or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1066, 577),
+            f"{score_info.statistics.ok or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (933, 666),
+            f"{score_info.statistics.miss or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+    elif score_info.ruleset_id in {2, 6}:
+        draw.text(
+            (768, 577),
+            f"{score_info.accuracy:.2f}%",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (768, 666),
+            f"{score_info.max_combo}/{pp_info.max_combo}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text((768, 438), f"{display_pp:.0f}", font=Torus_Regular_50, anchor="mm")
+        draw.text((933, 393), f"{ss_pp}", font=Torus_Regular_25, anchor="mm")
+        draw.text(
+            (933, 577),
+            f"{score_info.statistics.great or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1066, 577),
+            f"{score_info.statistics.large_tick_hit or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (933, 666),
+            f"{score_info.statistics.small_tick_miss or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1066, 666),
+            f"{score_info.statistics.miss or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+    else:
+        draw.text(
+            (933, 600),
+            (
+                f"{score_info.statistics.perfect / score_info.statistics.great:.1f}:1"
+                if (score_info.statistics.great or 0) != 0
+                else "∞:1"
+            ),
+            font=Torus_Regular_15,
+            anchor="mm",
+        )
+        draw.text(
+            (768, 577),
+            f"{score_info.accuracy:.2f}%",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text((768, 666), f"{score_info.max_combo}", font=Torus_Regular_25, anchor="mm")
+        draw.text((768, 438), f"{display_pp:.0f}", font=Torus_Regular_50, anchor="mm")
+        draw.text((933, 393), f"{ss_pp}", font=Torus_Regular_25, anchor="mm")
+        draw.text(
+            (933, 577),
+            f"{score_info.statistics.perfect or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1066, 577),
+            f"{score_info.statistics.great or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1200, 577),
+            f"{score_info.statistics.good or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (933, 666),
+            f"{score_info.statistics.ok or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1066, 666),
+            f"{score_info.statistics.meh or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+        draw.text(
+            (1200, 666),
+            f"{score_info.statistics.miss or 0}",
+            font=Torus_Regular_25,
+            anchor="mm",
+        )
+    user_icon = await open_user_icon(info, source)
+    _ = asyncio.create_task(update_map(mapinfo.beatmapset_id, mapinfo.id))
+    _ = asyncio.create_task(update_icon(info))
+    return await process_user_avatar_with_gif(im, user_icon, (27, 532), (170, 170), 15)
 
 
 def cal_legacy_acc(statistics: NewStatistics) -> float:

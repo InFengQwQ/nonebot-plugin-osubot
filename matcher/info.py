@@ -13,11 +13,11 @@ info = on_command("info", priority=11, block=True, aliases={"Info", "INFO"})
 @info.handle(parameterless=[split_msg()])
 async def _info(state: T_State):
     if "error" in state:
-        await UniMessage.text(state["error"]).finish(reply_to=True)
+        await UniMessage.text(state["error"]).finish()
     try:
         data = await draw_info(state["user"], NGM[state["mode"]], state["day"], state["source"])
     except NetworkError as e:
         await UniMessage.text(
             f"在查找用户：{state['username']} {NGM[state['mode']]}模式 {state['day']}日内 成绩时{str(e)}"
-        ).finish(reply_to=True)
-    await UniMessage.image(raw=data).finish(reply_to=True)
+        ).finish()
+    await UniMessage.image(raw=data).finish()

@@ -100,8 +100,8 @@ chart_hint_dic = game_manager.hint_templates[GameType.CHART]
 group_hint = game_manager.group_hints[GameType.AUDIO]
 pic_group_hint = game_manager.group_hints[GameType.PIC]
 chart_group_hint = game_manager.group_hints[GameType.CHART]
-guess_audio = on_command("音频猜歌", priority=11, block=True)
-guess_chart = on_command("谱面猜歌", priority=11, block=True)
+guess_audio = on_command("开始osu!mania音频猜歌游戏", priority=11, block=True)
+guess_chart = on_command("开始osu!谱面猜歌游戏", priority=11, block=True)
 guess_song_cache = ExpiringDict(1000, 60 * 60 * 24)
 data_path = Path() / "data" / "osu"
 pcm_path = data_path / "out.pcm"
@@ -190,38 +190,38 @@ async def _(
 ):
     if "error" in state:
         mode = str(random.randint(0, 3))
-        await UniMessage.text("由于未绑定OSU账号，本次随机挑选模式进行猜歌\n" + state["error"]).send(reply_to=True)
+        await UniMessage.text("由于未绑定OSU账号，本次随机挑选模式进行猜歌\n" + state["error"]).send()
     else:
         mode = state["mode"]
 
     async with get_session() as session:
         binded_id = (await session.scalars(select(UserData.user_id).where(UserData.osu_mode == int(mode)))).all()
     if not binded_id:
-        await UniMessage.text("还没有人绑定该模式的osu账号呢，绑定了再来试试吧").finish(reply_to=True)
+        await UniMessage.text("还没有人绑定该模式的osu账号呢，绑定了再来试试吧").finish()
 
     result = await select_score_from_user(state, msg, session_id)
     if result[0] is None:
-        await UniMessage.text(result[1]).finish(reply_to=True)
+        await UniMessage.text(result[1]).finish()
     selected_score, selected_user = result
 
     if not selected_score:
-        await UniMessage.text("好像没有可以猜的歌了，今天的猜歌就到此结束吧！").finish(reply_to=True)
+        await UniMessage.text("好像没有可以猜的歌了，今天的猜歌就到此结束吧！").finish()
 
     if games.get(session_id, None):
-        await UniMessage.text("现在还有进行中的猜歌呢，请等待当前猜歌结束").finish(reply_to=True)
+        await UniMessage.text("现在还有进行中的猜歌呢，请等待当前猜歌结束").finish()
 
     games[session_id] = selected_score
     set_timeout(matcher, session_id)
     await UniMessage.text(
         f"开始音频猜歌游戏，猜猜下面音频的曲名吧，该曲抽选自{selected_user} {NGM[mode]} 模式的bp"
-    ).send(reply_to=True)
+    ).send()
     logger.info(f"本次猜歌名为: {selected_score.beatmapset.title}")
     path = map_path / f"{selected_score.beatmapset.id}"
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
     audio = await safe_async_get(f"https://b.ppy.sh/preview/{selected_score.beatmapset.id}.mp3")
     if not audio:
-        await UniMessage.text("音频下载失败了 qaq ").finish(reply_to=True)
+        await UniMessage.text("音频下载失败了 qaq ").finish()
     await UniMessage.audio(raw=audio.read()).finish()
 
 
@@ -303,7 +303,7 @@ def create_word_matcher_handler(game_type: str, games_dict: dict):
             game_manager.pop_game(game_type, session_id)
             game_manager.reset_hint(game_type, session_id)
             msg = f"恭喜猜出正确答案为{song_name_unicode}"
-            await UniMessage.text(msg).send(reply_to=True)
+            await UniMessage.text(msg).send()
 
     return handler
 
@@ -337,7 +337,7 @@ async def handle_hint_generic(game_type: str, games_dict: dict, session_id: str,
 
     hints = game_manager.get_hint(game_type, session_id)
     if all(hints.values()):
-        await UniMessage.text("已无更多提示，加油哦").finish(reply_to=True)
+        await UniMessage.text("已无更多提示，加油哦").finish()
 
     # Get available hint types
     available_hints = [key for key, value in hints.items() if not value]
@@ -348,7 +348,7 @@ async def handle_hint_generic(game_type: str, games_dict: dict, session_id: str,
 
     # Provide hint based on action
     if action == "pic":
-        await UniMessage.image(url=score.beatmapset.covers.cover).finish(reply_to=True)
+        await UniMessage.image(url=score.beatmapset.covers.cover).finish()
     elif action == "artist":
         msg = f"曲师为：{score.beatmapset.artist_unicode}"
         if score.beatmapset.artist_unicode != score.beatmapset.artist:
@@ -362,11 +362,11 @@ async def handle_hint_generic(game_type: str, games_dict: dict, session_id: str,
             path.mkdir(parents=True, exist_ok=True)
         audio = await safe_async_get(f"https://b.ppy.sh/preview/{score.beatmapset.id}.mp3")
         if not audio:
-            await UniMessage.text("音频下载失败了 qaq ").finish(reply_to=True)
+            await UniMessage.text("音频下载失败了 qaq ").finish()
         await UniMessage.audio(raw=audio.read()).finish()
 
 
-hint = on_command("音频提示", priority=11, block=True, rule=Rule(game_running))
+hint = on_command("osu音频提示", priority=11, block=True, rule=Rule(game_running))
 
 
 @hint.handle()
@@ -390,7 +390,7 @@ async def _(session_id: str = SessionId(SessionIdType.GROUP)):
     await handle_hint_generic(GameType.CHART, chart_games, session_id, chart_hint)
 
 
-guess_pic = on_command("图片猜歌", priority=11, block=True)
+guess_pic = on_command("开始osu!mania图片猜歌游戏", priority=11, block=True)
 
 
 @guess_pic.handle(parameterless=[split_msg()])
@@ -402,7 +402,7 @@ async def _(
 ):
     if "error" in state:
         mode = str(random.randint(0, 3))
-        await UniMessage.text("由于未绑定OSU账号，本次随机选择模式进行猜歌\n" + state["error"]).send(reply_to=True)
+        await UniMessage.text("由于未绑定OSU账号，本次随机选择模式进行猜歌\n" + state["error"]).send()
     else:
         mode = state["mode"]
 
@@ -413,7 +413,7 @@ async def _(
 
     result = await select_score_from_user(state, msg, session_id)
     if result[0] is None:
-        await UniMessage.text(result[1]).finish(reply_to=True)
+        await UniMessage.text(result[1]).finish()
     selected_score, selected_user = result
 
     if not selected_score:
@@ -454,7 +454,7 @@ async def _(
 ):
     if "error" in state:
         mode = str(random.randint(0, 3))
-        await UniMessage.text("由于未绑定OSU账号，本次随机选择模式进行猜歌\n" + state["error"]).send(reply_to=True)
+        await UniMessage.text("由于未绑定OSU账号，本次随机选择模式进行猜歌\n" + state["error"]).send()
     else:
         mode = state["mode"]
 
@@ -465,7 +465,7 @@ async def _(
 
     result = await select_score_from_user(state, msg, session_id)
     if result[0] is None:
-        await UniMessage.text(result[1]).finish(reply_to=True)
+        await UniMessage.text(result[1]).finish()
     selected_score, selected_user = result
 
     if not selected_score:

@@ -8,7 +8,6 @@ require("nonebot_plugin_session")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_waiter")
-require("nonebot_plugin_uninfo")
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
@@ -17,19 +16,6 @@ from .config import Config
 from .matcher import *  # noqa
 from .info import update_users_info
 from .database.models import UserData
-
-try:
-    require("nonebot_plugin_ai_groupmate")
-except ModuleNotFoundError as e:
-    if e.name != "nonebot_plugin_ai_groupmate":
-        raise
-    logger.debug(f"ai-groupmate agent tools not enabled: {e}")
-except RuntimeError as e:
-    if "nonebot_plugin_ai_groupmate" not in str(e):
-        raise
-    logger.debug(f"ai-groupmate agent tools not enabled: {e}")
-else:
-    from . import agent_tools as agent_tools  # noqa: F401
 
 usage = "发送/osuhelp 查看帮助"
 __plugin_meta__ = PluginMetadata(

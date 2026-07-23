@@ -14,7 +14,7 @@ with open(medal_data_path) as file:
     medal_json = json.load(file)
 
 
-medal = on_command("medal", aliases={"md", "成就"}, priority=11, block=True)
+medal = on_command("medal", aliases={"成就"}, priority=11, block=True)
 
 
 @medal.handle()
@@ -61,7 +61,7 @@ async def _(msg: Message = CommandArg()):
     words = re.sub(r"<[^>]+>", "", words)
     if medal_data["PackID"]:
         words += f"\nhttps://osu.ppy.sh/beatmaps/packs/{medal_data['PackID'].rstrip(',,,')}"
-    await (UniMessage.image(url=medal_data["Link"]) + words).send(reply_to=True)
+    await (UniMessage.image(url=medal_data["Link"]) + words).send()
     if medal_data["beatmaps"]:
         msg = UniMessage()
         if len(medal_data["beatmaps"]) > 5:

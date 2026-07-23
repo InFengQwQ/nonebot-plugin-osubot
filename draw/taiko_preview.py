@@ -219,7 +219,7 @@ def map_to_image(map_data) -> BytesIO:
 
     img = img.crop((0, 0, new_width, new_height))
     byt = BytesIO()
-    img.save(byt, format="PNG")
+    img.save(byt, format="PNG"          )
     return byt
 
 

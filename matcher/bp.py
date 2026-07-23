@@ -1,23 +1,21 @@
 from nonebot import on_command
 from nonebot.typing import T_State
-from nonebot.internal.adapter import Event
 from nonebot_plugin_alconna import UniMessage
 
 from ..utils import NGM
 from .utils import split_msg
 from ..exceptions import NetworkError
 from ..draw import draw_bp, draw_score
-from .map_context import remember_map
 
 bp = on_command("bp", priority=11, block=True)
-pfm = on_command("pfm", priority=11, block=True, aliases={"bplist", "bl"})
-tbp = on_command("tbp", priority=11, block=True, aliases={"nb", "todaybp"})
+pfm = on_command("pfm", priority=11, block=True, aliases={"bplist"})
+tbp = on_command("tbp", priority=11, block=True, aliases={"todaybp"})
 
 
 @bp.handle(parameterless=[split_msg()])
-async def _bp(event: Event, state: T_State):
+async def _bp(state: T_State):
     if "error" in state:
-        await UniMessage.text(state["error"]).finish(reply_to=True)
+        await UniMessage.text(state["error"]).finish()
     if not state["range"] and state["query"]:
         state["range"] = "1-200"
     if state["range"]:
@@ -27,12 +25,12 @@ async def _bp(event: Event, state: T_State):
     if not best:
         best = "1"
     if not best.isdigit():
-        await UniMessage.text("只能接受纯数字的bp参数").finish(reply_to=True)
+        await UniMessage.text("只能接受纯数字的bp参数").finish()
     best = int(best)
     if best <= 0 or best > 200:
-        await UniMessage.text("只允许查询bp 1-200 的成绩").finish(reply_to=True)
+        await UniMessage.text("只允许查询bp 1-200 的成绩").finish()
     try:
-        data, map_id, set_id = await draw_score(
+        data = await draw_score(
             "bp",
             state["user"],
             state["is_lazer"],
@@ -41,28 +39,26 @@ async def _bp(event: Event, state: T_State):
             state["query"],
             state["source"],
             best=best,
-            return_context=True,
         )
     except NetworkError as e:
         lazer_mode = "lazer模式下" if state["is_lazer"] else "stable模式下"
         mods = f" mod:{state['mods']}" if state["mods"] else ""
         await UniMessage.text(
             f"在查找用户：{state['username']} {NGM[state['mode']]}模式 bp{best} {lazer_mode}{mods}时 {str(e)}"
-        ).finish(reply_to=True)
-    remember_map(event, map_id, set_id)
-    await UniMessage.image(raw=data).finish(reply_to=True)
+        ).finish()
+    await UniMessage.image(raw=data).finish()
 
 
 @pfm.handle(parameterless=[split_msg()])
 async def _pfm(state: T_State):
     if "error" in state:
-        await UniMessage.text(state["error"]).finish(reply_to=True)
+        await UniMessage.text(state["error"]).finish()
     if not state["range"]:
-        state["range"] = "1-30"
+        state["range"] = "1-200"
     ls = state["range"].split("-")
     low, high = int(ls[0]), int(ls[1])
     if not 0 < low < high <= 200:
-        await UniMessage.text("仅支持查询bp1-200").finish(reply_to=True)
+        await UniMessage.text("仅支持查询bp1-200").finish()
     try:
         data = await draw_bp(
             "bp",
@@ -81,22 +77,20 @@ async def _pfm(state: T_State):
         mods = f" mod:{state['mods']}" if state["mods"] else ""
         await UniMessage.text(
             f"在查找用户：{state['username']} {NGM[state['mode']]}模式 bp{state['range']} {lazer_mode}{mods}时 {str(e)}"
-        ).finish(reply_to=True)
-    await UniMessage.image(raw=data).finish(reply_to=True)
+        ).finish()
+    await UniMessage.image(raw=data).finish()
 
 
 @tbp.handle(parameterless=[split_msg()])
 async def _tbp(state: T_State):
     if "error" in state:
-        await UniMessage.text(state["error"]).finish(reply_to=True)
-    if state["day"] <= 0:
-        state["day"] = 1
+        await UniMessage.text(state["error"]).finish()
     if not state["range"]:
         state["range"] = "1-200"
     ls = state["range"].split("-")
     low, high = int(ls[0]), int(ls[1])
     if not 0 < low < high <= 200:
-        await UniMessage.text("仅支持查询bp1-200").finish(reply_to=True)
+        await UniMessage.text("仅支持查询bp1-200").finish()
     try:
         data = await draw_bp(
             "tbp",
@@ -116,5 +110,5 @@ async def _tbp(state: T_State):
         await UniMessage.text(
             f"在查找用户：{state['username']} {NGM[state['mode']]}模式"
             f"{lazer_mode}{mods} {state['day']}日内最佳成绩时 {str(e)}"
-        ).finish(reply_to=True)
-    await UniMessage.image(raw=data).finish(reply_to=True)
+        ).finish()
+    await UniMessage.image(raw=data).finish()

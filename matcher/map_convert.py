@@ -11,9 +11,7 @@ from nonebot.params import CommandArg, ShellCommandArgv
 from ..api import get_beatmapsets_info, osu_api
 from ..mania import Options, convert_mania_map
 from ..schema import Beatmap
-from ..utils import extract_beatmap_id, extract_beatmapset_id
 from ..file import upload_file_stream_batch
-from .map_context import get_last_map_id, get_last_set_id, remember_map, remember_set
 
 parser = ArgumentParser("convert", description="变换mania谱面")
 parser.add_argument("--set", type=int, help="要转换的谱面的setid")
@@ -28,7 +26,7 @@ parser.add_argument("--nln", action="store_true", help="移除谱面所有ln")
 parser.add_argument("--gap", nargs="?", default="150", type=float, help="指定反键的间距时间，默认150ms")
 parser.add_argument("--thres", nargs="?", default="100", type=float, help="指定转反键时ln转换为note的阈值，默认100ms")
 
-convert = on_shell_command("convert", aliases={"cv"}, parser=parser, block=True, priority=13)
+convert = on_shell_command("convert", parser=parser, block=True, priority=13)
 
 
 @convert.handle()
@@ -37,8 +35,8 @@ async def _(argv: list[str] = ShellCommandArgv()):
         args = parser.parse_args(argv)
     except ParserExit as e:
         if e.status == 0:
-            await UniMessage.image(path=Path(__file__).parent / "osufile" / "convert.jpg").finish(reply_to=True)
-        await UniMessage.text(str(e)).finish(reply_to=True)
+            await UniMessage.image(path=Path(__file__).parent / "osufile" / "convert.jpg").finish()
+        await UniMessage.text(str(e)).finish()
         return
     options = Options(**vars(args))
     if options.map:
@@ -48,18 +46,18 @@ async def _(argv: list[str] = ShellCommandArgv()):
         options.set = mapinfo.beatmapset_id
         options.beatmapsets = beatmapsets_info
     if not options.set:
-        await UniMessage.text("请提供需要转换的谱面setid").finish(reply_to=True)
+        await UniMessage.text("请提供需要转换的谱面setid").finish()
     if options.nln and options.fln:
-        await UniMessage.text("指令矛盾！").finish(reply_to=True)
+        await UniMessage.text("指令矛盾！").finish()
     osz_file = await convert_mania_map(options)
     if not osz_file:
-        await UniMessage.text("未找到该地图，请检查是否搞混了mapID与setID").finish(reply_to=True)
+        await UniMessage.text("未找到该地图，请检查是否搞混了mapID与setID").finish()
     file_path = osz_file.absolute()
     try:
         with open(file_path, "rb") as f:
             await UniMessage.file(raw=f.read()).send()
     except ActionFailed:
-        await UniMessage.text("上传文件失败，可能是群空间满或没有权限导致的").send(reply_to=True)
+        await UniMessage.text("上传文件失败，可能是群空间满或没有权限导致的").send()
     finally:
         try:
             osz_file.unlink()
@@ -74,19 +72,11 @@ change = on_command("倍速", priority=11, block=True)
 async def _(bot: Bot, event: GroupMessageEvent, msg: Message = CommandArg()):
     args = msg.extract_plain_text().strip().split()
     argv = ["--map"]
-    last_map_id = get_last_map_id(event)
-    uses_last_map = False
     if not args:
-        if last_map_id:
-            await UniMessage.text("请输入倍速速率，例如 /倍速 1.2").finish(reply_to=True)
-        await UniMessage.text("请输入需要倍速的地图mapID").finish(reply_to=True)
-    args[0] = extract_beatmap_id(args[0]) or args[0]
-    if not args[0].isdigit() and last_map_id:
-        args.insert(0, last_map_id)
-        uses_last_map = True
+        await UniMessage.text("请输入需要倍速的地图mapID").finish()
     set_id = args[0]
     if not set_id.isdigit():
-        await UniMessage.text("请输入正确的mapID").finish(reply_to=True)
+        await UniMessage.text("请输入正确的mapID").finish()
     argv.append(set_id)
     if len(args) >= 2:
         argv.append("--rate")
@@ -96,7 +86,7 @@ async def _(bot: Bot, event: GroupMessageEvent, msg: Message = CommandArg()):
         else:
             argv.append(args[1])
     else:
-        await UniMessage.text("请输入倍速速率").finish(reply_to=True)
+        await UniMessage.text("请输入倍速速率").finish()
     args = parser.parse_args(argv)
     options = Options(**vars(args))
     if options.map:
@@ -107,16 +97,14 @@ async def _(bot: Bot, event: GroupMessageEvent, msg: Message = CommandArg()):
         options.beatmapsets = beatmapsets_info
     osz_path = await convert_mania_map(options)
     if not osz_path:
-        await UniMessage.text("未找到该地图，请检查是否搞混了mapID与setID").finish(reply_to=True)
-    if not uses_last_map:
-        remember_map(event, set_id)
+        await UniMessage.text("未找到该地图，请检查是否搞混了mapID与setID").finish()
     file_path = osz_path.absolute()
     server_osz_path = await upload_file_stream_batch(bot, file_path)
 
     try:
         await bot.call_api("upload_group_file", group_id=event.group_id, file=server_osz_path, name=osz_path.name)
     except ActionFailed:
-        await UniMessage.text("上传文件失败，可能是群空间满或没有权限导致的").send(reply_to=True)
+        await UniMessage.text("上传文件失败，可能是群空间满或没有权限导致的").send()
     finally:
         try:
             osz_path.unlink()
@@ -130,22 +118,11 @@ generate_full_ln = on_command("反键", priority=11, block=True)
 @generate_full_ln.handle()
 async def _(bot: Bot, event: GroupMessageEvent, msg: Message = CommandArg()):
     args = msg.extract_plain_text().strip().split()
-    uses_last_set = False
     if not args:
-        set_id = await get_last_set_id(event)
-        if not set_id:
-            await UniMessage.text("请输入需要转ln的地图setID，或先查询一张谱面").finish(reply_to=True)
-        args = [set_id]
-        uses_last_set = True
-    raw_set_id = args[0]
-    parsed_set_id = extract_beatmapset_id(raw_set_id)
-    if not parsed_set_id and (linked_map_id := extract_beatmap_id(raw_set_id)):
-        map_data = await osu_api("map", map_id=int(linked_map_id))
-        parsed_set_id = str(map_data["beatmapset_id"])
-    args[0] = parsed_set_id or raw_set_id
+        await UniMessage.text("请输入需要转ln的地图setID").finish()
     set_id = args[0]
     if not set_id.isdigit():
-        await UniMessage.text("请输入正确的setID").finish(reply_to=True)
+        await UniMessage.text("请输入正确的setID").finish()
     argv = ["--set", set_id, "--fln"]
     if len(args) >= 2:
         argv.append("--gap")
@@ -157,15 +134,13 @@ async def _(bot: Bot, event: GroupMessageEvent, msg: Message = CommandArg()):
     options = Options(**vars(args))
     osz_path = await convert_mania_map(options)
     if not osz_path:
-        await UniMessage.text("未找到该地图，请检查是否搞混了mapID与setID").finish(reply_to=True)
-    if not uses_last_set:
-        remember_set(event, set_id)
+        await UniMessage.text("未找到该地图，请检查是否搞混了mapID与setID").finish()
     file_path = osz_path.absolute()
     server_osz_path = await upload_file_stream_batch(bot, file_path)
     try:
         await bot.call_api("upload_group_file", group_id=event.group_id, file=server_osz_path, name=osz_path.name)
     except ActionFailed:
-        await UniMessage.text("上传文件失败，可能是群空间满或没有权限导致的").send(reply_to=True)
+        await UniMessage.text("上传文件失败，可能是群空间满或没有权限导致的").send()
     finally:
         try:
             osz_path.unlink()

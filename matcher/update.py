@@ -12,9 +12,9 @@ from .utils import split_msg
 from ..database import UserData
 from ..file import save_info_pic, user_cache_path
 
-update_pic = on_command("更新背景", priority=11, block=True, aliases={"setbg", "更改背景"})
+update_pic = on_command("更新背景", priority=11, block=True, aliases={"更改背景"})
 update_info = on_command("update", priority=11, block=True, aliases={"更新信息"})
-clear_background = on_command("清空背景", priority=11, block=True, aliases={"clearbg", "清除背景", "重置背景"})
+clear_background = on_command("清空背景", priority=11, block=True, aliases={"清除背景", "重置背景"})
 
 
 @update_pic.handle()
@@ -24,8 +24,8 @@ async def _(event: Event, bot: Bot, state: T_State):
         user_data = await session.scalar(select(UserData).where(UserData.user_id == qq))
     state["user"] = user_data.osu_id if user_data else 0
     if state["user"] == 0:
-        await UniMessage.text("该账号尚未绑定，请输入 /bind 用户名 绑定账号").finish(reply_to=True)
-    await UniMessage.text("请发送图片").send(reply_to=True)
+        await UniMessage.text("该账号尚未绑定，请输入 /bind 用户名 绑定账号").finish()
+    await UniMessage.text("请发送图片").send()
 
     @waiter(waits=["message"], keep_session=True)
     async def check(pic: UniMsg):
@@ -54,7 +54,7 @@ async def _(event: Event, bot: Bot, state: T_State):
 @update_info.handle(parameterless=[split_msg()])
 async def _(state: T_State):
     if "error" in state:
-        await UniMessage.text(state["error"]).send(reply_to=True)
+        await UniMessage.text(state["error"]).send()
         return
     user = state["user"]
     user_path = user_cache_path / str(user)
@@ -62,19 +62,19 @@ async def _(state: T_State):
         # 检查文件是否为图片格式
         if file_path.suffix.lower() in [".jpg", ".png", ".jpeg", ".gif", ".bmp", ".peg"]:
             file_path.unlink()
-    await UniMessage.text("个人信息更新成功").send(reply_to=True)
+    await UniMessage.text("个人信息更新成功").send()
 
 
 @clear_background.handle(parameterless=[split_msg()])
 async def _(state: T_State):
     if "error" in state:
-        await UniMessage.text(state["error"]).send(reply_to=True)
+        await UniMessage.text(state["error"]).send()
         return
     user = state["user"]
     path = user_cache_path / str(user) / "info.png"
     if path.exists():
         path.unlink()
-        await UniMessage.text("背景图片清除成功").send(reply_to=True)
+        await UniMessage.text("背景图片清除成功").send()
         return
     else:
-        await UniMessage.text("您还没有设置背景或已成功清除背景").send(reply_to=True)
+        await UniMessage.text("您还没有设置背景或已成功清除背景").send()
