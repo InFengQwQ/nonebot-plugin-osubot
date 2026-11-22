@@ -32,26 +32,20 @@ import importlib.util
 import sys
 from pathlib import Path
 
-# 动态加载 ExportImage.py
-_spec = importlib.util.spec_from_file_location(
-    "ExportImage",
-    Path(__file__).parent.parent / "ExportImage.py"
-)
-_export_module = importlib.util.module_from_spec(_spec)
-sys.modules["ExportImage"] = _export_module
-_spec.loader.exec_module(_export_module)
-render_mc_to_bytes = _export_module.render_mc_to_bytes
+from ..ExportImage import render_mc_to_bytes
+from desktop.plugin_runtime import required_malody_account, tool_path, MissingBusinessAccount
+from urllib.parse import urlencode
 
 # ========================= Malody API =========================
 DOWNLOAD_API = "http://api.paimonnokoya.me/api/store/download"
-API_PARAMS = "api=202409&uid=1693832&key=B1j-KVQAzcfeQTiO7OEvidUiUI_odHyZQSEZ4W4ahvQWtnpjht5lUQolE05jiezZwH5_HtQaeqE31Gyr-0x4hJ4FgfjYrSfy-rYeAwkPmqnhLt7OnLqUl9xaWABVwWkJbHLAsyHcrfMReY9wdZRF_Pwwn_mBI8AUrAHW4GnuOiI"
 CONCURRENCY = 4
 TIMEOUT = 60
 
 async def download_by_cid(cid: int, cache_dir: Path) -> Optional[Path]:
     """根据 Malody CID 下载谱面，返回本地 .mc 或 .mcz 文件路径"""
+    uid, store_key = await required_malody_account()
     ts = int(time.time())
-    url = f"{DOWNLOAD_API}?{API_PARAMS}&cid={cid}&t={ts}"
+    url = DOWNLOAD_API + "?" + urlencode({"api": "202409", "uid": uid, "key": store_key, "cid": cid, "t": ts})
 
     connector = aiohttp.TCPConnector(limit=CONCURRENCY * 2)
     semaphore = asyncio.Semaphore(CONCURRENCY)
@@ -114,7 +108,7 @@ CACHE_DIR = Path("cache/malody")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # ========================= 原 osu 工具函数 =========================
-MA2OM_PATH = Path(r"E:\Desktop\Malody工具\ma2om.exe")
+MA2OM_PATH = tool_path("ma2om.exe")
 MAX_HITOBJECTS = 100000
 
 def convert_mcz_to_osu(mc_path: Path) -> Path:

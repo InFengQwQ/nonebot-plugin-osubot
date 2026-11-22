@@ -49,7 +49,7 @@ async def safe_async_post(url, headers=None, data=None, json=None) -> Response:
 async def renew_token():
     url = "https://osu.ppy.sh/oauth/token"
     if not key or not client_id:
-        raise Exception("请设置osu_key和osu_client")
+        raise NetworkError("缺少 osu! OAuth Client ID / Client Secret，请在应用窗口填写。")
     req = await safe_async_post(
         url,
         json={
