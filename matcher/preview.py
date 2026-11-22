@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 from ..ExportImage import render_mc_to_bytes
-from desktop.plugin_runtime import required_malody_account, tool_path, MissingBusinessAccount
+from src.plugin_runtime import required_malody_account, tool_path, MissingBusinessAccount
 from urllib.parse import urlencode
 
 # ========================= Malody API =========================
