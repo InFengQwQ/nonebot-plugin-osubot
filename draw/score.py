@@ -37,15 +37,15 @@ from .static import (
     IconLs,
     ModsDict,
     Venera_60,
-    Torus_Regular_15,
-    Torus_Regular_20,
-    Torus_Regular_25,
-    Torus_Regular_50,
-    Torus_Regular_60,
-    Torus_SemiBold_15,
-    Torus_SemiBold_20,
-    Torus_SemiBold_25,
-    Torus_SemiBold_30,
+    Sans_15,
+    Sans_20,
+    Sans_25,
+    Sans_50,
+    Sans_60,
+    Sans_15,
+    Sans_20,
+    Sans_25,
+    Sans_30,
     osufile,
     extra_30,
     Stardiff,
@@ -249,7 +249,7 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
     draw.text(
         (556, 85),
         f"★{display_stars:.2f}",
-        font=Torus_SemiBold_20,
+        font=Sans_20,
         anchor="lm",
         fill=color,
     )
@@ -285,7 +285,7 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
     with Image.open(country) as country_img:
         country_bg = country_img.convert("RGBA").resize((66, 45))
         im.alpha_composite(country_bg, (208, 597))
-    await handle_team_image(im, draw, info, (208, 660), (80, 40), (297, 675), Torus_Regular_20)
+    await handle_team_image(im, draw, info, (208, 660), (80, 40), (297, 675), Sans_20)
     # supporter
     # if info.is_supporter:
     #     im.alpha_composite(SupporterBg.resize((40, 40)), (250, 640))
@@ -337,14 +337,14 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
             draw.text(
                 (610, 355 + 35 * num),
                 f"{new:.0f}",
-                font=Torus_SemiBold_20,
+                font=Sans_20,
                 anchor="mm",
             )
         else:
             draw.text(
                 (610, 355 + 35 * num),
                 f"{new:.2f}" if new != round(new, 1) else f"{new:.1f}",
-                font=Torus_SemiBold_20,
+                font=Sans_20,
                 anchor="mm",
             )
     # stardiff
@@ -373,7 +373,7 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
         difflen = int(400 * stars / 10) if stars <= 10 else 400
         diff_len = Image.new("RGBA", (difflen, 8), color)
         im.alpha_composite(diff_len, (165, 490))
-    draw.text((610, 493), f"{stars:.2f}", font=Torus_SemiBold_20, anchor="mm")
+    draw.text((610, 493), f"{stars:.2f}", font=Sans_20, anchor="mm")
     # 时长 - 滑条
     diff_info = [
         calc_songlen(mapinfo.total_length),
@@ -386,7 +386,7 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
             draw,
             (70 + 120 * num, 300),
             f"{i}",
-            font=Torus_Regular_20,
+            font=Sans_20,
             anchor="lm",
             fill=(255, 204, 34, 255),
         )
@@ -395,31 +395,31 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
         draw,
         (595, 115),
         mapinfo.status.capitalize(),
-        Torus_SemiBold_15,
+        Sans_15,
         anchor="mm",
         fill=(255, 255, 255, 255),
     )
     # setid
-    draw.text((32, 25), f"Setid：{mapinfo.beatmapset_id}", font=Torus_SemiBold_20, anchor="lm")
+    draw.text((32, 25), f"Setid：{mapinfo.beatmapset_id}", font=Sans_20, anchor="lm")
     # mapid
-    draw.text((650, 25), f"Mapid: {mapinfo.id}", font=Torus_SemiBold_20, anchor="rm")
+    draw.text((650, 25), f"Mapid: {mapinfo.id}", font=Sans_20, anchor="rm")
     # 曲名
-    title = trim_text_with_ellipsis(mapinfo.beatmapset.title, 600, Torus_SemiBold_30)
+    title = trim_text_with_ellipsis(mapinfo.beatmapset.title, 600, Sans_30)
     draw_text_with_outline(
         draw,
         (30, 200),
         title,
-        Torus_SemiBold_30,
+        Sans_30,
         anchor="lm",
         fill=(255, 255, 255, 255),
     )
     # 艺术家
-    artist = trim_text_with_ellipsis(mapinfo.beatmapset.artist, 600, Torus_SemiBold_20)
+    artist = trim_text_with_ellipsis(mapinfo.beatmapset.artist, 600, Sans_20)
     draw_text_with_outline(
         draw,
         (30, 230),
         artist,
-        Torus_SemiBold_20,
+        Sans_20,
         anchor="lm",
         fill=(255, 255, 255, 255),
     )
@@ -431,22 +431,22 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
 
     else:
         mapper = f"谱师: {mapinfo.beatmapset.creator}"
-    mapper = trim_text_with_ellipsis(mapper, 600, Torus_SemiBold_15)
+    mapper = trim_text_with_ellipsis(mapper, 600, Sans_15)
     draw_text_with_outline(
         draw,
         (30, 265),
         mapper,
-        Torus_SemiBold_15,
+        Sans_15,
         anchor="lm",
         fill=(255, 255, 255, 255),
     )
     # 谱面版本
-    version = trim_text_with_ellipsis(mapinfo.version, 450, Torus_SemiBold_15)
+    version = trim_text_with_ellipsis(mapinfo.version, 450, Sans_15)
     draw_text_with_outline(
         draw,
         (65, 80),
         version,
-        Torus_SemiBold_15,
+        Sans_15,
         anchor="lm",
         fill=(255, 255, 255, 255),
     )
@@ -456,132 +456,132 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
     draw.text(
         (880, 165),
         f"{score_info.legacy_total_score or score_info.total_score:,}",
-        font=Torus_Regular_60,
+        font=Sans_60,
         anchor="lm",
     )
     # 时间
-    draw.text((883, 230), "达成时间：", font=Torus_SemiBold_20, anchor="lm")
-    draw.text((985, 230), score_info.ended_at.strftime("%Y-%m-%d %H:%M:%S"), font=Torus_SemiBold_20, anchor="lm")
+    draw.text((883, 230), "达成时间：", font=Sans_20, anchor="lm")
+    draw.text((985, 230), score_info.ended_at.strftime("%Y-%m-%d %H:%M:%S"), font=Sans_20, anchor="lm")
     # 全球排名
-    draw.text((883, 260), "全球排行：" if grank else "", font=Torus_SemiBold_20, anchor="lm")
-    draw.text((985, 260), f"#{grank}" if grank else "", font=Torus_SemiBold_25, anchor="lm")
+    draw.text((883, 260), "全球排行：" if grank else "", font=Sans_20, anchor="lm")
+    draw.text((985, 260), f"#{grank}" if grank else "", font=Sans_25, anchor="lm")
     # 左下玩家名
-    draw.text((208, 550), info.username, font=Torus_SemiBold_30, anchor="lm")
+    draw.text((208, 550), info.username, font=Sans_30, anchor="lm")
     # 国内排名
     draw.text(
         (283, 630),
         f"#{info.statistics.country_rank}",
-        font=Torus_SemiBold_25,
+        font=Sans_25,
         anchor="lm",
     )
     if score_info.ruleset_id in {0, 4, 8}:
-        draw.text((1066, 393), ss_pp, font=Torus_Regular_25, anchor="mm")
-        draw.text((933, 393), if_pp, font=Torus_Regular_25, anchor="mm")
-        draw.text((768, 438), f"{display_pp:.0f}", font=Torus_Regular_50, anchor="mm")
-        draw.text((933, 482), f"{pp_info.pp_aim:.0f}", font=Torus_Regular_25, anchor="mm")
-        draw.text((1066, 482), f"{pp_info.pp_speed:.0f}", font=Torus_Regular_25, anchor="mm")
-        draw.text((1200, 482), f"{pp_info.pp_acc:.0f}", font=Torus_Regular_25, anchor="mm")
+        draw.text((1066, 393), ss_pp, font=Sans_25, anchor="mm")
+        draw.text((933, 393), if_pp, font=Sans_25, anchor="mm")
+        draw.text((768, 438), f"{display_pp:.0f}", font=Sans_50, anchor="mm")
+        draw.text((933, 482), f"{pp_info.pp_aim:.0f}", font=Sans_25, anchor="mm")
+        draw.text((1066, 482), f"{pp_info.pp_speed:.0f}", font=Sans_25, anchor="mm")
+        draw.text((1200, 482), f"{pp_info.pp_acc:.0f}", font=Sans_25, anchor="mm")
         draw.text(
             (768, 577),
             f"{score_info.accuracy:.2f}%",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (768, 666),
             f"{score_info.max_combo:,}/{pp_info.max_combo}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (933, 577),
             f"{score_info.statistics.great or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1066, 577),
             f"{score_info.statistics.ok or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (933, 666),
             f"{score_info.statistics.meh or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1066, 666),
             f"{score_info.statistics.miss or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
     elif score_info.ruleset_id in {1, 5}:
         draw.text(
             (768, 577),
             f"{score_info.accuracy:.2f}%",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
-        draw.text((768, 666), f"{score_info.max_combo:,}", font=Torus_Regular_25, anchor="mm")
-        draw.text((768, 438), f"{display_pp:.0f}", font=Torus_Regular_50, anchor="mm")
-        draw.text((933, 393), f"{ss_pp}", font=Torus_Regular_25, anchor="mm")
+        draw.text((768, 666), f"{score_info.max_combo:,}", font=Sans_25, anchor="mm")
+        draw.text((768, 438), f"{display_pp:.0f}", font=Sans_50, anchor="mm")
+        draw.text((933, 393), f"{ss_pp}", font=Sans_25, anchor="mm")
         draw.text(
             (933, 577),
             f"{score_info.statistics.great or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1066, 577),
             f"{score_info.statistics.ok or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (933, 666),
             f"{score_info.statistics.miss or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
     elif score_info.ruleset_id in {2, 6}:
         draw.text(
             (768, 577),
             f"{score_info.accuracy:.2f}%",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (768, 666),
             f"{score_info.max_combo}/{pp_info.max_combo}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
-        draw.text((768, 438), f"{display_pp:.0f}", font=Torus_Regular_50, anchor="mm")
-        draw.text((933, 393), f"{ss_pp}", font=Torus_Regular_25, anchor="mm")
+        draw.text((768, 438), f"{display_pp:.0f}", font=Sans_50, anchor="mm")
+        draw.text((933, 393), f"{ss_pp}", font=Sans_25, anchor="mm")
         draw.text(
             (933, 577),
             f"{score_info.statistics.great or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1066, 577),
             f"{score_info.statistics.large_tick_hit or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (933, 666),
             f"{score_info.statistics.small_tick_miss or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1066, 666),
             f"{score_info.statistics.miss or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
     else:
@@ -592,52 +592,52 @@ async def draw_score_pic(score_info: UnifiedScore, info: UnifiedUser, map_json, 
                 if (score_info.statistics.great or 0) != 0
                 else "∞:1"
             ),
-            font=Torus_Regular_15,
+            font=Sans_15,
             anchor="mm",
         )
         draw.text(
             (768, 577),
             f"{score_info.accuracy:.2f}%",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
-        draw.text((768, 666), f"{score_info.max_combo}", font=Torus_Regular_25, anchor="mm")
-        draw.text((768, 438), f"{display_pp:.0f}", font=Torus_Regular_50, anchor="mm")
-        draw.text((933, 393), f"{ss_pp}", font=Torus_Regular_25, anchor="mm")
+        draw.text((768, 666), f"{score_info.max_combo}", font=Sans_25, anchor="mm")
+        draw.text((768, 438), f"{display_pp:.0f}", font=Sans_50, anchor="mm")
+        draw.text((933, 393), f"{ss_pp}", font=Sans_25, anchor="mm")
         draw.text(
             (933, 577),
             f"{score_info.statistics.perfect or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1066, 577),
             f"{score_info.statistics.great or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1200, 577),
             f"{score_info.statistics.good or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (933, 666),
             f"{score_info.statistics.ok or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1066, 666),
             f"{score_info.statistics.meh or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
         draw.text(
             (1200, 666),
             f"{score_info.statistics.miss or 0}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             anchor="mm",
         )
     user_icon = await open_user_icon(info, source)

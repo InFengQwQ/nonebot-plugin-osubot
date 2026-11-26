@@ -14,7 +14,7 @@ from ..utils import NGM
 from .utils import split_msg
 from ..file import get_projectimg
 from ..draw.utils import draw_fillet
-from ..draw.static import Torus_Regular_25
+from ..draw.static import Sans_25
 from ..database.models import InfoData, UserData
 
 group_pp_rank = on_command("群内排名", priority=11, block=True)
@@ -62,9 +62,9 @@ async def _(state: T_State, bot: Bot, session_id: str = SessionId(SessionIdType.
     draw_len = len([i for i in info_ls if i.pp >= 100])
     img = Image.new("RGBA", (1200, 85 + 82 * draw_len), (35, 42, 34, 255))
     draw = ImageDraw.Draw(img)
-    draw.text((40, 10), f"{NGM[mode]}模式群内排名", font=Torus_Regular_25, fill=(255, 255, 255, 255))
-    draw.text((880, 10), "pp", font=Torus_Regular_25, fill=(255, 255, 255, 255))
-    draw.text((960, 10), "全球排名", font=Torus_Regular_25, fill=(255, 255, 255, 255))
+    draw.text((40, 10), f"{NGM[mode]}模式群内排名", font=Sans_25, fill=(255, 255, 255, 255))
+    draw.text((880, 10), "pp", font=Sans_25, fill=(255, 255, 255, 255))
+    draw.text((960, 10), "全球排名", font=Sans_25, fill=(255, 255, 255, 255))
     for index, (info, icon) in enumerate(zip(info_ls, icon_ls)):
         if info.pp < 100:
             continue
@@ -80,25 +80,25 @@ async def _(state: T_State, bot: Bot, session_id: str = SessionId(SessionIdType.
         draw.text(
             (43, 70 + 82 * index),
             f"#{index + 1}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             fill=(255, 255, 255, 255),
         )
         draw.text(
             (180, 70 + 82 * index),
             name,
-            font=Torus_Regular_25,
+            font=Sans_25,
             fill=(166, 199, 163, 255),
         )
         draw.text(
             (850, 70 + 82 * index),
             f"{int(info.pp)}pp",
-            font=Torus_Regular_25,
+            font=Sans_25,
             fill=(255, 255, 255, 255),
         )
         draw.text(
             (980, 70 + 82 * index),
             f"{info.g_rank}",
-            font=Torus_Regular_25,
+            font=Sans_25,
             fill=(255, 255, 255, 255),
         )
 

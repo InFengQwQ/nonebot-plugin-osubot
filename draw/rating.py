@@ -15,11 +15,11 @@ from .static import (
     MpLink,
     TeamRed,
     TeamBlue,
-    Torus_SemiBold_20,
-    Torus_SemiBold_25,
-    Torus_SemiBold_30,
-    Torus_SemiBold_40,
-    Torus_SemiBold_45,
+    Sans_20,
+    Sans_25,
+    Sans_30,
+    Sans_40,
+    Sans_45,
 )
 
 
@@ -73,24 +73,24 @@ async def draw_rating(match_id: str, algorithm: str = "osuplus") -> bytes:
         team_red = match_name.group(2)
         team_blue = match_name.group(3)
         text = f"{match_title}:  {team_red} VS {team_blue}"
-        draw.text((1020, 130), text, font=Torus_SemiBold_40, anchor="mm")
+        draw.text((1020, 130), text, font=Sans_40, anchor="mm")
     elif team_type == "head-to-head":
         match_title = match_info.match["name"]
-        draw.text((1020, 130), f"{match_title}", font=Torus_SemiBold_40, anchor="mm")
+        draw.text((1020, 130), f"{match_title}", font=Sans_40, anchor="mm")
 
     # 绘制时间
     draw.text(
         (1020, 220),
         f"{datetime.fromisoformat(match_info.match['start_time']).strftime('%Y-%m-%d %H:%M')} - "
         f"{datetime.fromisoformat(match_info.match['end_time']).strftime('%H:%M')}",
-        font=Torus_SemiBold_25,
+        font=Sans_25,
         anchor="mm",
     )
     # 在底部绘制当前时间
     draw.text(
         (1950, 280 + 170 * ((len(match_info.users) - len(invalid_user_list) + 1) // 2) + 90 - 50),
         f"绘制时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        font=Torus_SemiBold_20,
+        font=Sans_20,
         anchor="rb",
     )
 
@@ -137,7 +137,7 @@ async def draw_rating(match_id: str, algorithm: str = "osuplus") -> bytes:
         draw.text(
             (40 + x_offset, 335 + base_y),
             f"#{i + 1}",
-            font=Torus_SemiBold_40,
+            font=Sans_40,
             fill="#ffffff",
             anchor="lm",
         )
@@ -145,7 +145,7 @@ async def draw_rating(match_id: str, algorithm: str = "osuplus") -> bytes:
         draw.text(
             (350 + x_offset, 306 + base_y),
             f"{user.username}",
-            font=Torus_SemiBold_30,
+            font=Sans_30,
             fill="#ffffff",
             anchor="lm",
         )
@@ -153,7 +153,7 @@ async def draw_rating(match_id: str, algorithm: str = "osuplus") -> bytes:
         draw.text(
             (350 + x_offset, 341 + base_y),
             f"Total Score: {score_to_3digit(player_stats.total_score)} ({score_to_3digit(player_stats.average_score)})",
-            font=Torus_SemiBold_20,
+            font=Sans_20,
             fill="#bbbbbb",
             anchor="lm",
         )
@@ -163,7 +163,7 @@ async def draw_rating(match_id: str, algorithm: str = "osuplus") -> bytes:
                 (350 + x_offset, 366 + base_y),
                 f"Win Rate: {player_stats.win_rate:.2%} ({player_stats.win_and_lose[0]}W"
                 f"-{player_stats.win_and_lose[1]}L)",
-                font=Torus_SemiBold_20,
+                font=Sans_20,
                 fill="#bbbbbb",
                 anchor="lm",
             )
@@ -175,7 +175,7 @@ async def draw_rating(match_id: str, algorithm: str = "osuplus") -> bytes:
             draw.text(
                 (350 + x_offset, 366 + base_y),
                 f"Top 1 Rate: {top1_rate:.2%} ({top1_count} W/{game_amount} P)",
-                font=Torus_SemiBold_20,
+                font=Sans_20,
                 fill="#bbbbbb",
                 anchor="lm",
             )
@@ -183,7 +183,7 @@ async def draw_rating(match_id: str, algorithm: str = "osuplus") -> bytes:
         draw.text(
             (840 + x_offset, 340 + base_y),
             f"{rating:.2f}",
-            font=Torus_SemiBold_45,
+            font=Sans_45,
             fill="#ffffff",
             anchor="lm",
         )

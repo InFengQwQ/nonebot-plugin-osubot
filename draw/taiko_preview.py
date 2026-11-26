@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from .static import Torus_Regular_8, Torus_Regular_15
+from .static import Sans_8, Sans_15
 
 HIT_DON = 0x00
 HIT_KAT = 0x01
@@ -35,11 +35,11 @@ def map_to_image(map_data) -> BytesIO:
     img = Image.new(mode="RGB", size=(3000, 30000), color=0x121212)
     draw = ImageDraw.Draw(img)
 
-    # title_font = Torus_Regular_30
-    # semi_font = Torus_Regular_25
-    # reg_font = Torus_Regular_20
-    small_font = Torus_Regular_15
-    tiny_font = Torus_Regular_8
+    # title_font = Sans_30
+    # semi_font = Sans_25
+    # reg_font = Sans_20
+    small_font = Sans_15
+    tiny_font = Sans_8
 
     # draw.text(
     #     (LEFT_MARGIN, 40),

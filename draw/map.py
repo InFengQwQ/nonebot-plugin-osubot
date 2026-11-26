@@ -19,9 +19,9 @@ from .static import (
     IconLs,
     MapBg1,
     ModsDict,
-    Torus_Regular_20,
-    Torus_SemiBold_20,
-    Torus_SemiBold_25,
+    Sans_20,
+    Sans_20,
+    Sans_25,
     extra_30,
     Stars,
 )
@@ -82,7 +82,7 @@ async def draw_map_info(mapid: int, mods: list[str]) -> BytesIO:
     draw.text(
         (100, 78),
         f"★{ss_pp_info.stars:.2f}",
-        font=Torus_SemiBold_20,
+        font=Sans_20,
         anchor="lm",
         fill=color,
     )
@@ -118,7 +118,7 @@ async def draw_map_info(mapid: int, mods: list[str]) -> BytesIO:
         draw.text(
             (1170, 428 + 35 * num),
             str(float(f"{new:.2f}")).rstrip("0").rstrip("."),
-            font=Torus_SemiBold_20,
+            font=Sans_20,
             anchor="mm",
         )
     # stardiff
@@ -147,7 +147,7 @@ async def draw_map_info(mapid: int, mods: list[str]) -> BytesIO:
         difflen = int(250 * stars / 10) if stars <= 10 else 250
         diff_len = Image.new("RGBA", (difflen, 8), color)
         im.alpha_composite(diff_len, (890, 566))
-    draw.text((1170, 566), f"{stars:.2f}", font=Torus_SemiBold_20, anchor="mm")
+    draw.text((1170, 566), f"{stars:.2f}", font=Sans_20, anchor="mm")
     # 绘制mods
     if mods:
         for mods_num, s_mods in enumerate(mods):
@@ -163,7 +163,7 @@ async def draw_map_info(mapid: int, mods: list[str]) -> BytesIO:
     draw.text(
         (1190, 80),
         f"Setid: {mapinfo.beatmapset_id} | Mapid: {mapid}",
-        font=Torus_Regular_20,
+        font=Sans_20,
         anchor="rm",
     )
     # 难度名
@@ -172,40 +172,40 @@ async def draw_map_info(mapid: int, mods: list[str]) -> BytesIO:
     if len(version) > max_version_length:
         version = version[: max_version_length - 3] + "..."
     text = f"{version}"
-    draw.text((180, 78), text, font=Torus_SemiBold_20, anchor="lm")
+    draw.text((180, 78), text, font=Sans_20, anchor="lm")
     # 曲名+曲师
     text = f"{mapinfo.beatmapset.title} | by {mapinfo.beatmapset.artist_unicode}"
     max_length = 80
     if len(text) > max_length:
         text = text[: max_length - 3] + "..."
 
-    draw.text((50, 37), text, font=Torus_SemiBold_25, anchor="lm")
+    draw.text((50, 37), text, font=Sans_25, anchor="lm")
     # 来源
-    # draw.text((50, 260), f"Source:{mapinfo.beatmapset.source}", font=Torus_SemiBold_25, anchor="rt")
+    # draw.text((50, 260), f"Source:{mapinfo.beatmapset.source}", font=Sans_25, anchor="rt")
     # mapper
-    draw.text((160, 400), "谱师:", font=Torus_SemiBold_20, anchor="lt")
-    draw.text((160, 425), mapinfo.beatmapset.creator, font=Torus_SemiBold_20, anchor="lt")
+    draw.text((160, 400), "谱师:", font=Sans_20, anchor="lt")
+    draw.text((160, 425), mapinfo.beatmapset.creator, font=Sans_20, anchor="lt")
     # ranked时间
-    draw.text((160, 460), "上架时间:", font=Torus_SemiBold_20, anchor="lt")
-    draw.text((160, 485), new_time, font=Torus_SemiBold_20, anchor="lt")
+    draw.text((160, 460), "上架时间:", font=Sans_20, anchor="lt")
+    draw.text((160, 485), new_time, font=Sans_20, anchor="lt")
     # 状态
-    draw.text((1100, 304), mapinfo.status.capitalize(), font=Torus_SemiBold_20, anchor="mm")
+    draw.text((1100, 304), mapinfo.status.capitalize(), font=Sans_20, anchor="mm")
     # 时长 - 滑条
     for num, i in enumerate(diffinfo):
         draw.text(
             (770 + 120 * num, 365),
             f"{i}",
-            font=Torus_Regular_20,
+            font=Sans_20,
             anchor="lm",
             fill=(255, 204, 34, 255),
         )
     # maxcb
-    draw.text((50, 570), f"最大连击: {mapinfo.max_combo}", font=Torus_SemiBold_20, anchor="lm")
+    draw.text((50, 570), f"最大连击: {mapinfo.max_combo}", font=Sans_20, anchor="lm")
     # pp
     draw.text(
         (320, 570),
         f"SS PP: {int(round(ss_pp_info.pp, 0))}",
-        font=Torus_SemiBold_20,
+        font=Sans_20,
         anchor="lm",
     )
     # 输出

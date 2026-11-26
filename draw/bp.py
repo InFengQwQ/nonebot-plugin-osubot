@@ -13,7 +13,7 @@ from .score import cal_score_info
 from ..api import get_user_scores, get_user_info_data
 from ..file import map_path, get_pfm_img, download_osu
 from .utils import draw_fillet, draw_fillet2, open_user_icon, filter_scores_with_regex
-from .static import BgImg, Image, BgImg1, ModsDict, RankDict, Torus_Regular_20, Torus_Regular_25, Torus_SemiBold_25
+from .static import BgImg, Image, BgImg1, ModsDict, RankDict, Sans_20, Sans_25, Sans_25
 
 
 async def draw_bp(
@@ -113,7 +113,7 @@ async def draw_pfm(
         uinfo = f"{mode.capitalize()} 模式 | 近24h内（含死亡）上传成绩"
     else:
         uinfo = f"{mode.capitalize()} 模式 | 近{day + 1}日新增 BP"
-    draw.text((1388, 80), uinfo, font=Torus_SemiBold_25, anchor="rm")
+    draw.text((1388, 80), uinfo, font=Sans_25, anchor="rm")
     user_icon = await open_user_icon(info, source)
     icon_img = draw_fillet(user_icon.convert("RGBA").resize((75, 75)), 15)
     user_icon.close()
@@ -126,7 +126,7 @@ async def draw_pfm(
         draw.text(
             (40 + offset, 190 + h_num),
             str(index + 1),
-            font=Torus_Regular_20,
+            font=Sans_20,
             anchor="rm",
         )
 
@@ -150,7 +150,7 @@ async def draw_pfm(
         draw.text(
             (115, 70),
             f"{info.country_code} #{info.statistics.country_rank}",
-            font=Torus_SemiBold_25,
+            font=Sans_25,
             anchor="lm",
         )
 
@@ -158,7 +158,7 @@ async def draw_pfm(
         draw.text(
             (115, 25),
             f"{info.username}",
-            font=Torus_SemiBold_25,
+            font=Sans_25,
             anchor="lm",
         )
 
@@ -179,7 +179,7 @@ async def draw_pfm(
         metadata = f"{bp.beatmap.title} | by {bp.beatmap.artist}"
         if len(metadata) > 30:
             metadata = metadata[:27] + "..."
-        draw.text((210 + offset, 135 + h_num), metadata, font=Torus_Regular_25, anchor="lm")
+        draw.text((210 + offset, 135 + h_num), metadata, font=Sans_25, anchor="lm")
 
         # 地图版本&时间
         difficulty = bp.beatmap.version
@@ -194,7 +194,7 @@ async def draw_pfm(
         draw.text(
             (210 + offset, 168 + h_num),
             difficulty,
-            font=Torus_Regular_20,
+            font=Sans_20,
             anchor="lm",
             fill=(238, 171, 0, 255),
         )
@@ -203,7 +203,7 @@ async def draw_pfm(
         draw.text(
             (210 + offset, 245 + h_num),
             f"{bp.ended_at.strftime('%Y-%m-%dT%H:%M:%S')}",
-            font=Torus_Regular_20,
+            font=Sans_20,
             anchor="lm",
         )
 
@@ -211,7 +211,7 @@ async def draw_pfm(
         draw.text(
             (680 + offset, 210 + h_num),
             f"{bp.accuracy:.2f}%",
-            font=Torus_SemiBold_25,
+            font=Sans_25,
             anchor="rm",
             fill=(238, 171, 0, 255),
         )
@@ -224,7 +224,7 @@ async def draw_pfm(
         draw.text(
             (680 + offset, 245 + h_num),
             f"ID: {bp.beatmap.id}",
-            font=Torus_Regular_20,
+            font=Sans_20,
             anchor="rm",
         )
 
@@ -232,14 +232,14 @@ async def draw_pfm(
         draw.text(
             (645 + offset, 174 + h_num),
             f"{pp_value:.0f}",
-            font=Torus_SemiBold_25,
+            font=Sans_25,
             anchor="rm",
             fill=(255, 102, 171, 255),
         )
         draw.text(
             (648 + offset, 170 + h_num),
             "pp",
-            font=Torus_SemiBold_25,
+            font=Sans_25,
             anchor="lm",
             fill=(209, 148, 176, 255),
         )
