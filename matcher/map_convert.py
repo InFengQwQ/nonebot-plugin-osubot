@@ -35,7 +35,8 @@ async def _(argv: list[str] = ShellCommandArgv()):
         args = parser.parse_args(argv)
     except ParserExit as e:
         if e.status == 0:
-            await UniMessage.image(path=Path(__file__).parent / "osufile" / "convert.jpg").finish()
+            help_image = Path(__file__).parent.parent / "osufile" / "convert.jpg"
+            await UniMessage.image(raw=help_image.read_bytes()).finish()
         await UniMessage.text(str(e)).finish()
         return
     options = Options(**vars(args))
